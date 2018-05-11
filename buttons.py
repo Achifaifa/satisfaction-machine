@@ -3,6 +3,12 @@
 import time, psycopg2
 import RPi.GPIO as GPIO
 
+def log(msg):
+  print "[%s] %s"%(time.time(), msg)
+
+def log_press(type):
+  print "[%s] %s button pressed"%(time.time(), type)
+
 log("Starting")
 
 log("Loading creds")
@@ -57,13 +63,6 @@ def store_rating(value):
   cur.execute("INSERT INTO ratings (timestamp, data) VALUES (%i, %s)",
     (t, value))
   conn.commit()
-
-def log(msg):
-  print "[%s] %s"%(time.time(), msg)
-
-def log_press(type):
-  print "[%s] %s button pressed"%(time.time(), type)
-
 
 def fuck():
   GPIO.cleanup()
