@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import time, psycopg2
+import time, os, psycopg2
 import RPi.GPIO as GPIO
 
 def log(msg):
@@ -48,7 +48,24 @@ def store_rating(value):
     except Exception as e:
       log("Failed to rollback changes")
       fuck()
+
+###
+
 log("Starting")
+
+log("Waiting for internet connection")
+while 1:
+  try:
+    time.sleep(5)
+    r=os.system("ping 8.8.8.8 -c1 -w2 > /dev/null 2>&1")
+    if not r:
+      log("Network up")
+      break
+    else: 
+      log("Network down (%s)"%r)
+  except exception as e:
+    log("Error checking network (%s)"%e)
+    continue
 
 log("Loading creds")
 try:
