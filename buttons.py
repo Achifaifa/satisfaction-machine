@@ -6,42 +6,19 @@ import RPi.GPIO as GPIO
 def log(msg):
   print "[%s] %s"%(time.time(), msg)
 
-def log_press(type):
+def log_event(type):
   print "[%s] %s button pressed"%(time.time(), type)
 
-log("Starting")
-
-log("Loading creds")
-try:
-  with open("./postgres-creds","r") as creds:
-    c=[i.strip() for i in creds.readlines()]
-  log("Creds loaded")
-except:
-  log("Unable to load creds. Aborting")
-  fuck()
-
-log("Connecting to database")
-try:
-  conn=psycopg2.connect("dbname=satisfaction user=root host=%s port=%s password=%s"%(c[0],c[1],c[2]))
-  cur=conn.cursor()
-  log("Connection to database established")
-except: 
-  log("Database connection failed")
-  fuck()
-
-log("Setting up GPIO pins")
-try:
-  GPIO.setmode(GPIO.BCM)
-  GPIO.setup(23, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-  GPIO.setup(24, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-  GPIO.setup(25, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-  GPIO.add_event_detect(23, GPIO.RISING, callback=callback_positive, bouncetime=500)
-  GPIO.add_event_detect(24, GPIO.RISING, callback=callback_negative, bouncetime=500)
-  GPIO.add_event_detect(25, GPIO.RISING, callback=callback_neutral, bouncetime=500)
-  log("GPIO pins set")
-except:
-  log("Failed to set GPIO pins")
-  fuck()
+def fuck():
+  log("Aborting")
+  try:
+    GPIO.cleanup()
+    cur.close()
+    comm.close()
+  except:
+    pass
+  finally:
+    exit()
 
 def callback_positive(ev):
 
@@ -60,18 +37,57 @@ def callback_negative(ev):
 
 def store_rating(value):
   t=time.time()
-  cur.execute("INSERT INTO ratings (timestamp, data) VALUES (%i, %s)",
-    (t, value))
-  conn.commit()
+  try:
+    cur.execute("INSERT INTO ratings (timestamp, data) VALUES (%s, %s);", (t, value))
+    conn.commit()
+  except Exception as e:
+    log("Error sending to database (%s)"%e)
+    try:
+      log("Rolling back changes")
+      conn.rollback()
+    except Exception as e:
+      log("Failed to rollback changes")
+      fuck()
+log("Starting")
 
-def fuck():
-  GPIO.cleanup()
-  cur.close()
-  comm.close()
-  exit()
+log("Loading creds")
+try:
+  with open("./postgres-creds","r") as creds:
+    c=[i.strip() for i in creds.readlines()]
+  log("Creds loaded")
+except Exception as e:
+  log("Unable to load creds (%s)"%e)
+  fuck()
 
+log("Connecting to database")
+try:
+  conn=psycopg2.connect("dbname=satisfaction user=root host=%s port=%s password=%s"%(c[0],c[1],c[2]))
+  cur=conn.cursor()
+  log("Connection to database established")
+except Exception as e: 
+  log("Database connection failed (%s)"%e)
+  fuck()
+
+log("Setting up GPIO pins")
+try:
+  GPIO.setmode(GPIO.BCM)
+  GPIO.setup(23, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+  GPIO.setup(24, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+  GPIO.setup(25, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+  GPIO.add_event_detect(23, GPIO.RISING, callback=callback_positive, bouncetime=500)
+  GPIO.add_event_detect(24, GPIO.RISING, callback=callback_negative, bouncetime=500)
+  GPIO.add_event_detect(25, GPIO.RISING, callback=callback_neutral, bouncetime=500)
+  log("GPIO pins set")
+except Exception as e:
+  log("Failed to set GPIO pins (%s)"%e)
+  fuck()
+
+log("Ready")
 while 1:
   try:
     pass
-  except:
+  except Exception as e:
+    log("Error in main loop (%s)"%s)
+  except KeyboardInterrupt:
+    log("CTRL+C detected")
     fuck()
