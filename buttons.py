@@ -78,7 +78,8 @@ except Exception as e:
 
 log("Connecting to database")
 try:
-  conn=psycopg2.connect("dbname=satisfaction user=root host=%s port=%s password=%s"%(c[0],c[1],c[2]))
+  conn=psycopg2.connect("dbname=satisfaction user=root host=%s port=%s password=%s connect_timeout=60000 options='-c statement_timeout=60000'"%(c[0],c[1],c[2]) )
+  conn.set_session(autocommit=True)
   cur=conn.cursor()
   log("Connection to database established")
 except Exception as e: 
